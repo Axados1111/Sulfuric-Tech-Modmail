@@ -1,0 +1,17 @@
+{
+  "name": "Sulfuric-Tech-Modmail",
+  "version": "1.0.0",
+  "description": "DM me for support!",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["discord", "modmail", "bot"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5"
+  }
+}
