@@ -1,12 +1,15 @@
-const { 
-    Client, 
-    GatewayIntentBits, 
-    Partials, 
-    ChannelType, 
-    PermissionsBitField 
+require('dotenv').config();
+
+const {
+    Client,
+    GatewayIntentBits,
+    Partials,
+    ChannelType,
+    PermissionsBitField
 } = require('discord.js');
 
-const config = require('./config.json');
+process.on('unhandledRejection', console.error);
+process.on('uncaughtException', console.error);
 
 const client = new Client({
     intents: [
@@ -21,35 +24,42 @@ const client = new Client({
 const activeThreads = new Map();
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`);
+    console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// 📩 User DMs bot
+// 📩 Handle Messages
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    // USER DM
+    // =====================
+    // USER → DM BOT
+    // =====================
     if (message.channel.type === ChannelType.DM) {
-        const guild = client.guilds.cache.get(config.guildId);
-        if (!guild) return;
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (!guild) return console.log("❌ Guild not found");
 
         let channel = activeThreads.get(message.author.id);
 
-        // Create new thread
+        // Create new modmail channel
         if (!channel) {
-            const category = guild.channels.cache.get(config.categoryId);
+            const category = guild.channels.cache.get(process.env.CATEGORY_ID);
+
+            if (!category) {
+                console.log("❌ Category not found");
+                return;
+            }
 
             channel = await guild.channels.create({
                 name: `modmail-${message.author.username}`,
                 type: ChannelType.GuildText,
-                parent: category,
+                parent: category.id,
                 permissionOverwrites: [
                     {
                         id: guild.roles.everyone,
                         deny: [PermissionsBitField.Flags.ViewChannel]
                     },
                     {
-                        id: config.staffRoleId,
+                        id: process.env.STAFF_ROLE_ID,
                         allow: [PermissionsBitField.Flags.ViewChannel]
                     }
                 ]
@@ -63,41 +73,46 @@ client.on('messageCreate', async (message) => {
         channel.send(`**${message.author.tag}:** ${message.content}`);
     }
 
-    // STAFF REPLY
+    // =====================
+    // STAFF → REPLY
+    // =====================
     if (message.guild && message.channel.name.startsWith('modmail-')) {
-        if (!message.member.roles.cache.has(config.staffRoleId)) return;
+        if (!message.member.roles.cache.has(process.env.STAFF_ROLE_ID)) return;
 
-        const userId = [...activeThreads.entries()]
-            .find(([_, ch]) => ch.id === message.channel.id)?.[0];
+        const entry = [...activeThreads.entries()]
+            .find(([_, ch]) => ch.id === message.channel.id);
 
-        if (!userId) return;
+        if (!entry) return;
 
+        const userId = entry[0];
         const user = await client.users.fetch(userId);
+
         if (!user) return;
 
         user.send(`📨 **Staff:** ${message.content}`);
     }
-});
 
-// ❌ Close command
-client.on('messageCreate', async (message) => {
-    if (!message.guild) return;
-    if (!message.channel.name.startsWith('modmail-')) return;
+    // =====================
+    // CLOSE COMMAND
+    // =====================
+    if (
+        message.guild &&
+        message.channel.name.startsWith('modmail-') &&
+        message.content === '!close'
+    ) {
+        if (!message.member.roles.cache.has(process.env.STAFF_ROLE_ID)) return;
 
-    if (message.content === '!close') {
-        if (!message.member.roles.cache.has(config.staffRoleId)) return;
+        const entry = [...activeThreads.entries()]
+            .find(([_, ch]) => ch.id === message.channel.id);
 
-        const userId = [...activeThreads.entries()]
-            .find(([_, ch]) => ch.id === message.channel.id)?.[0];
-
-        if (userId) {
-            const user = await client.users.fetch(userId);
+        if (entry) {
+            const user = await client.users.fetch(entry[0]);
             user.send("❌ Your modmail has been closed.");
-            activeThreads.delete(userId);
+            activeThreads.delete(entry[0]);
         }
 
         message.channel.delete();
     }
 });
 
-client.login(config.token);
+client.login(process.env.TOKEN);
