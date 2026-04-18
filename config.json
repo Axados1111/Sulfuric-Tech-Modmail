@@ -1,6 +1,0 @@
-{
-  "token": "YOUR_BOT_TOKEN",
-  "guildId": "YOUR_SERVER_ID",
-  "categoryId": "CATEGORY_ID_FOR_MODMAIL",
-  "staffRoleId": "STAFF_ROLE_ID"
-}
